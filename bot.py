@@ -31,7 +31,7 @@ params_BMI = {"mean": 28.668258344071237, "std": 6.514005141049461}
 
 
 def calc_bmi(height, weight):
-    return weight / (height**2)
+    return 703 * (weight / (height**2))
 
 
 def age_category(age):
@@ -73,6 +73,11 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 dp.middleware.setup(LoggingMiddleware())
 
+start_help_cancel_kb = ReplyKeyboardMarkup(resize_keyboard=True).add(
+    KeyboardButton('/start'),
+    KeyboardButton('/help'),
+    KeyboardButton('/cancel')
+)
 yes_no_kb = ReplyKeyboardMarkup(resize_keyboard=True).add(
     KeyboardButton("Да"), KeyboardButton("Нет")
 )
@@ -124,6 +129,13 @@ async def cmd_start(message: types.Message):
     await message.answer(
         "Привет! Я бот, который собирает Ваши данные и делает предсказание вероятности сердечного приступа. Начнем?\nВаш пол?",
         reply_markup=w_m_kb,
+    )
+
+@dp.message_handler(commands="help")
+async def cmd_help(message: types.Message):
+    await Form.sex.set()
+    await message.answer(
+        "Нажмите /start, чтобы начать опрос\nНажмите /cancel, чтобы отменить сбор данных", reply_markup=start_help_cancel_kb
     )
 
 
@@ -282,11 +294,11 @@ async def process_weight(message: types.Message, state: FSMContext):
         prediction_prob = model.predict_proba(data)[0]
         if prediction == 0:
             await message.answer(
-                f"Ваши данные собраны. Предсказание модели:\nВам не о чем переживать! У Вас низкая вероятность сердечного приступа: {round(prediction_prob[1], 3)}!\n"
+                f"Ваши данные собраны. Предсказание модели:\nВам не о чем переживать! У Вас низкая вероятность сердечного приступа: {round(prediction_prob[1], 3)}!\n", reply_markup=start_help_cancel_kb
             )
         if prediction == 1:
             await message.answer(
-                f"Ваши данные собраны. Предсказание модели:\nУ Вас высокая вероятность сердечного приступа: {round(prediction_prob[1], 3)}"
+                f"Ваши данные собраны. Предсказание модели:\nУ Вас высокая вероятность сердечного приступа: {round(prediction_prob[1], 3)}", reply_markup=start_help_cancel_kb
             )
 
         await state.finish()
@@ -300,7 +312,7 @@ async def process_weight(message: types.Message, state: FSMContext):
 async def cancel_handler(message: types.Message, state: FSMContext):
     await state.finish()
     await message.reply(
-        "Процесс сбора данных был отменен.", reply_markup=types.ReplyKeyboardRemove()
+        "Процесс сбора данных был отменен.", reply_markup=start_help_cancel_kb
     )
 
 
